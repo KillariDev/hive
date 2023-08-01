@@ -1,5 +1,6 @@
 - client: go-ethereum
   nametag: multicall-git
+  dockerfile: git
   build_args:
     github: s1na/go-ethereum
     tag: multicall

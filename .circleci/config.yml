@@ -40,7 +40,7 @@ jobs:
       - checkout
       - attach_workspace: {at: "/tmp/build"}
       - run:
-          command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml"
+          command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output"
 
   # This job runs the go unit tests.
   go-test:
