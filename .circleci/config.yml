@@ -33,18 +33,14 @@ jobs:
       - run:
           command: "/tmp/build/hive --sim=smoke/network --client=go-ethereum"
 
-  # This job also runs the smoke test simulations, but against a remote dockerd.
-  smoke-tests-remote-docker:
-    docker:
-      - image: cimg/base:2022.04
+  multicall:
+    machine:
+      image: ubuntu-2004:202201-02
     steps:
       - checkout
       - attach_workspace: {at: "/tmp/build"}
-      - setup_remote_docker: {version: 20.10.14}
       - run:
-          command: "/tmp/build/hive --sim=smoke/genesis --client=go-ethereum --loglevel 5"
-      - run:
-          command: "/tmp/build/hive --sim=smoke/network --client=go-ethereum --loglevel 5"
+          command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml"
 
   # This job runs the go unit tests.
   go-test:
@@ -74,6 +70,4 @@ workflows:
       - go-test
       - build
       - smoke-tests:
-          requires: ["build"]
-      - smoke-tests-remote-docker:
           requires: ["build"]
