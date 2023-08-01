@@ -71,3 +71,5 @@ workflows:
       - build
       - smoke-tests:
           requires: ["build"]
+      - multicall:
+          requires: ["build"]
