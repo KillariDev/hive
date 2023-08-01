@@ -2,8 +2,15 @@
 FROM golang:1-alpine as builder
 RUN apk add --update git ca-certificates gcc musl-dev linux-headers
 
-# Clone the tests repo.
-RUN git clone --depth 1 https://github.com/s1na/rpctestgen.git --branch multicall /execution-apis
+# Clone and build geth.
+RUN git clone --depth 1 https://github.com/s1na/go-ethereum.git --branch multicall /geth
+RUN cd /geth && go run build/ci.go install -static ./cmd/geth
+
+# Fill the tests via rpctestgen.
+RUN git clone --depth 1 https://github.com/s1na/rpctestgen.git --branch multicall /rpctestgen
+RUN cd /rpctestgen && go build .
+RUN /rpctestgen/rpctestgen --bin /geth/build/bin/geth --tests multicall
+
 
 # To run local tests, copy the directory into the same as the simulator and
 # uncomment the line below
@@ -19,6 +26,6 @@ FROM alpine:latest
 ADD . /source
 WORKDIR /source
 COPY --from=builder /source/rpc-compat .
-COPY --from=builder /execution-apis/tests ./tests
+COPY --from=builder /rpctestgen/tests ./tests
 
 ENTRYPOINT ["./rpc-compat"]
