@@ -41,6 +41,7 @@ jobs:
       - attach_workspace: {at: "/tmp/build"}
       - run:
           command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output --results-root /tmp/build/workspace"
+      - run: ls -l /tmp/build/workspace
       - run:
           name: Compress test results
           command: "tar czf /tmp/build/workspace.tar.gz /tmp/build/workspace"
