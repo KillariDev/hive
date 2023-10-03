@@ -43,7 +43,7 @@ jobs:
           command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output --results-root /tmp/build/workspace"
       - run:
           name: Compress test results
-          command: "tar -C /tmp/build czf /tmp/build/workspace.tar.gz workspace"
+          command: "tar -C /tmp/build -czf /tmp/build/workspace.tar.gz workspace"
           when: always
       - store_artifacts:
             path: /tmp/build/workspace.tar.gz
