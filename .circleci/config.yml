@@ -42,9 +42,6 @@ jobs:
       - run:
           command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output --results-root /tmp/build/workspace"
       - run:
-        command: ls -l /tmp/build/workspace
-        when: always
-      - run:
           name: Compress test results
           command: "tar czf /tmp/build/workspace.tar.gz /tmp/build/workspace"
           when: always
