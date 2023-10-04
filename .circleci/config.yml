@@ -40,7 +40,14 @@ jobs:
       - checkout
       - attach_workspace: {at: "/tmp/build"}
       - run:
-          command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output"
+          command: "/tmp/build/hive --sim=ethereum/rpc-compat --client-file configs/multicall.yaml --docker.output --results-root /tmp/build/workspace"
+      - run:
+          name: Compress test results
+          command: "tar -C /tmp/build -czf /tmp/build/workspace.tar.gz workspace"
+          when: always
+      - store_artifacts:
+            path: /tmp/build/workspace.tar.gz
+            destination: workspace.tar.gz
 
   # This job runs the go unit tests.
   go-test:
