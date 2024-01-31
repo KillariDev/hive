@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -14,30 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/hive/hivesim"
 	diff "github.com/yudai/gojsondiff"
 	"github.com/yudai/gojsondiff/formatter"
 )
 
 var (
-	clientEnv = hivesim.Params{
-		"HIVE_NODETYPE":       "full",
-		"HIVE_NETWORK_ID":     "1337",
-		"HIVE_CHAIN_ID":       "1337",
-		"HIVE_FORK_HOMESTEAD": "0",
-		//"HIVE_FORK_DAO_BLOCK":      2000,
-		"HIVE_FORK_TANGERINE":                   "0",
-		"HIVE_FORK_SPURIOUS":                    "0",
-		"HIVE_FORK_BYZANTIUM":                   "0",
-		"HIVE_FORK_CONSTANTINOPLE":              "0",
-		"HIVE_FORK_PETERSBURG":                  "0",
-		"HIVE_FORK_ISTANBUL":                    "0",
-		"HIVE_FORK_BERLIN":                      "0",
-		"HIVE_FORK_LONDON":                      "0",
-		"HIVE_SHANGHAI_TIMESTAMP":               "0",
-		"HIVE_TERMINAL_TOTAL_DIFFICULTY":        "0",
-		"HIVE_TERMINAL_TOTAL_DIFFICULTY_PASSED": "1",
-	}
 	files = map[string]string{
 		"genesis.json": "./tests/genesis.json",
 		"chain.rlp":    "./tests/chain.rlp",
@@ -50,6 +32,13 @@ type test struct {
 }
 
 func main() {
+	// Load fork environment.
+	var clientEnv hivesim.Params
+	err := common.LoadJSON("tests/forkenv.json", &clientEnv)
+	if err != nil {
+		panic(err)
+	}
+
 	suite := hivesim.Suite{
 		Name: "rpc-compat",
 		Description: `
@@ -138,7 +127,7 @@ func runTest(t *hivesim.T, c *hivesim.Client, data []byte) error {
 				}
 				formatter := formatter.NewAsciiFormatter(got, config)
 				diffString, _ := formatter.Format(d)
-				return fmt.Errorf("response differs from expected:\n%s", diffString)
+				return fmt.Errorf("response differs from expected (-- client, ++ test):\n%s", diffString)
 			}
 			resp = nil
 		default:
@@ -175,14 +164,14 @@ type loggingRoundTrip struct {
 
 func (rt *loggingRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Read and log the request body.
-	reqBytes, err := ioutil.ReadAll(req.Body)
+	reqBytes, err := io.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 	rt.t.Logf(">>  %s", bytes.TrimSpace(reqBytes))
 	reqCopy := *req
-	reqCopy.Body = ioutil.NopCloser(bytes.NewReader(reqBytes))
+	reqCopy.Body = io.NopCloser(bytes.NewReader(reqBytes))
 
 	// Do the round trip.
 	resp, err := rt.inner.RoundTrip(&reqCopy)
@@ -192,12 +181,12 @@ func (rt *loggingRoundTrip) RoundTrip(req *http.Request) (*http.Response, error)
 	defer resp.Body.Close()
 
 	// Read and log the response bytes.
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 	respCopy := *resp
-	respCopy.Body = ioutil.NopCloser(bytes.NewReader(respBytes))
+	respCopy.Body = io.NopCloser(bytes.NewReader(respBytes))
 	rt.t.Logf("<<  %s", bytes.TrimSpace(respBytes))
 	return &respCopy, nil
 }
@@ -221,7 +210,7 @@ func loadTests(t *hivesim.T, root string, re *regexp.Regexp) []test {
 			fmt.Println("skip", pathname)
 			return nil // skip
 		}
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}

@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -296,13 +295,43 @@ var ruleset = map[string]envvars{
 		"HIVE_TERMINAL_TOTAL_DIFFICULTY": 0,
 		"HIVE_SHANGHAI_TIMESTAMP":        15000,
 	},
+	"Cancun": {
+		"HIVE_FORK_HOMESTEAD":            0,
+		"HIVE_FORK_TANGERINE":            0,
+		"HIVE_FORK_SPURIOUS":             0,
+		"HIVE_FORK_BYZANTIUM":            0,
+		"HIVE_FORK_CONSTANTINOPLE":       0,
+		"HIVE_FORK_PETERSBURG":           0,
+		"HIVE_FORK_ISTANBUL":             0,
+		"HIVE_FORK_BERLIN":               0,
+		"HIVE_FORK_LONDON":               0,
+		"HIVE_FORK_MERGE":                0,
+		"HIVE_TERMINAL_TOTAL_DIFFICULTY": 0,
+		"HIVE_SHANGHAI_TIMESTAMP":        0,
+		"HIVE_CANCUN_TIMESTAMP":          0,
+	},
+	"ShanghaiToCancunAtTime15k": {
+		"HIVE_FORK_HOMESTEAD":            0,
+		"HIVE_FORK_TANGERINE":            0,
+		"HIVE_FORK_SPURIOUS":             0,
+		"HIVE_FORK_BYZANTIUM":            0,
+		"HIVE_FORK_CONSTANTINOPLE":       0,
+		"HIVE_FORK_PETERSBURG":           0,
+		"HIVE_FORK_ISTANBUL":             0,
+		"HIVE_FORK_BERLIN":               0,
+		"HIVE_FORK_LONDON":               0,
+		"HIVE_FORK_MERGE":                0,
+		"HIVE_TERMINAL_TOTAL_DIFFICULTY": 0,
+		"HIVE_SHANGHAI_TIMESTAMP":        0,
+		"HIVE_CANCUN_TIMESTAMP":          15000,
+	},
 }
 
 func main() {
 	suite := hivesim.Suite{
 		Name: "consensus",
 		Description: "The 'consensus' test suite executes BlockchainTests from the " +
-			"offical test repository (https://github.com/ethereum/tests). For every test, it starts an instance of the client, " +
+			"official test repository (https://github.com/ethereum/tests). For every test, it starts an instance of the client, " +
 			"and makes it import the RLP blocks. After import phase, the node is queried about it's latest blocks, which is matched " +
 			"to the expected last blockhash according to the test.",
 	}
@@ -524,15 +553,16 @@ func (tc *testcase) updateEnv(env hivesim.Params) {
 // toGethGenesis creates the genesis specification from a test block.
 func toGethGenesis(test *btJSON) *core.Genesis {
 	genesis := &core.Genesis{
-		Nonce:      test.Genesis.Nonce.Uint64(),
-		Timestamp:  test.Genesis.Timestamp.Uint64(),
-		ExtraData:  test.Genesis.ExtraData,
-		GasLimit:   test.Genesis.GasLimit,
-		Difficulty: test.Genesis.Difficulty,
-		Mixhash:    test.Genesis.MixHash,
-		Coinbase:   test.Genesis.Coinbase,
-		Alloc:      test.Pre,
-		BaseFee:    test.Genesis.BaseFee,
+		Nonce:         test.Genesis.Nonce.Uint64(),
+		Timestamp:     test.Genesis.Timestamp.Uint64(),
+		ExtraData:     test.Genesis.ExtraData,
+		GasLimit:      test.Genesis.GasLimit,
+		Difficulty:    test.Genesis.Difficulty,
+		Mixhash:       test.Genesis.MixHash,
+		Coinbase:      test.Genesis.Coinbase,
+		Alloc:         test.Pre,
+		BaseFee:       test.Genesis.BaseFee,
+		ExcessBlobGas: test.Genesis.ExcessBlobGas,
 	}
 	return genesis
 }
@@ -549,7 +579,7 @@ func (tc *testcase) artefacts() (string, string, []string, error) {
 	genesis := toGethGenesis(&tc.blockTest.json)
 	genBytes, _ := json.Marshal(genesis)
 	genesisFile := filepath.Join(rootDir, "genesis.json")
-	if err := ioutil.WriteFile(genesisFile, genBytes, 0777); err != nil {
+	if err := os.WriteFile(genesisFile, genBytes, 0777); err != nil {
 		return rootDir, "", nil, fmt.Errorf("failed writing genesis: %v", err)
 	}
 
@@ -557,7 +587,7 @@ func (tc *testcase) artefacts() (string, string, []string, error) {
 	for i, block := range tc.blockTest.json.Blocks {
 		rlpdata := common.FromHex(block.Rlp)
 		fname := fmt.Sprintf("%s/%04d.rlp", blockDir, i+1)
-		if err := ioutil.WriteFile(fname, rlpdata, 0777); err != nil {
+		if err := os.WriteFile(fname, rlpdata, 0777); err != nil {
 			return rootDir, genesisFile, blocks, fmt.Errorf("failed writing block %d: %v", i, err)
 		}
 		blocks = append(blocks, fname)
@@ -618,8 +648,19 @@ func compareGenesis(have string, want btHeader) (string, error) {
 	cmp(haveGenesis.ExtraData, want.ExtraData, "extraData")
 	cmp(haveGenesis.Difficulty, want.Difficulty, "difficulty")
 	cmp(haveGenesis.Timestamp, want.Timestamp, "timestamp")
-	cmp(haveGenesis.BaseFee, want.BaseFee, "baseFeePerGas")
 	cmp(haveGenesis.GasLimit, want.GasLimit, "gasLimit")
-	cmp(haveGenesis.GasUsed, want.GasUsed, "gasused")
+	cmp(haveGenesis.GasUsed, want.GasUsed, "gasUsed")
+	cmp(haveGenesis.Nonce, want.Nonce, "nonce")
+	cmp(haveGenesis.BaseFee, want.BaseFee, "baseFeePerGas")
+	if haveGenesis.ExcessBlobGas != nil && want.ExcessBlobGas != nil {
+		cmp(*haveGenesis.ExcessBlobGas, *want.ExcessBlobGas, "excessBlobGas")
+	} else {
+		cmp(haveGenesis.ExcessBlobGas, want.ExcessBlobGas, "excessBlobGas")
+	}
+	if haveGenesis.BlobGasUsed != nil && want.BlobGasUsed != nil {
+		cmp(*haveGenesis.BlobGasUsed, *want.BlobGasUsed, "blobGasUsed")
+	} else {
+		cmp(haveGenesis.BlobGasUsed, want.BlobGasUsed, "blobGasUsed")
+	}
 	return output, nil
 }
